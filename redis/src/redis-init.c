@@ -10,7 +10,6 @@
 #define REDIS_GID 999
 
 int main(int argc, char **argv) {
-    // 1. Fix Kernel Settings
     printf("=> [redis-init] Checking vm.overcommit_memory...\n");
     FILE *f = fopen("/proc/sys/vm/overcommit_memory", "w");
     if (f) {
