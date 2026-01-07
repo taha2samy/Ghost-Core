@@ -127,16 +127,31 @@ tasks:
       - docker run -it --privileged=true --rm --name ghost-redis-dev -p 6379:6379 {{.REGISTRY}}/redis:{{.REDIS_VER}}-dev
 
   postgres:prod:
-    desc: Build PostgreSQL Production (Distroless)
+    desc: Build PostgreSQL Production (Standalone - SUID Enabled)
     cmds:
-      - echo ">>> Building Ghost Core [PostgreSQL Prod]..."
+      - echo ">>> Building Ghost Core [PostgreSQL Prod - Standalone]..."
       - >
         docker build --no-cache --target final
         --build-arg PG_VERSION={{.POSTGRES_VER}}
         --build-arg PG_SHA256={{.POSTGRES_SHA}}
+        --build-arg ENABLE_SUID=true
         --build-arg VCS_REF={{.GIT_HASH}}
         --build-arg BUILD_DATE={{.BUILD_DATE}}
         -t {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}
+        -f postgres/Dockerfile .
+
+  postgres:k8s:
+    desc: Build PostgreSQL Kubernetes (Strict - SUID Disabled)
+    cmds:
+      - echo ">>> Building Ghost Core [PostgreSQL K8s - Strict]..."
+      - >
+        docker build --no-cache --target final
+        --build-arg PG_VERSION={{.POSTGRES_VER}}
+        --build-arg PG_SHA256={{.POSTGRES_SHA}}
+        --build-arg ENABLE_SUID=false
+        --build-arg VCS_REF={{.GIT_HASH}}
+        --build-arg BUILD_DATE={{.BUILD_DATE}}
+        -t {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}-k8s
         -f postgres/Dockerfile .
 
   postgres:dev:
@@ -147,6 +162,7 @@ tasks:
         docker build --no-cache --target dev
         --build-arg PG_VERSION={{.POSTGRES_VER}}
         --build-arg PG_SHA256={{.POSTGRES_SHA}}
+        --build-arg ENABLE_SUID=true
         -t {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}-dev
         -f postgres/Dockerfile .
 

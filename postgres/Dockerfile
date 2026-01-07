@@ -6,8 +6,8 @@ ARG PG_SHA256
 RUN apk add --no-cache \
     build-base pkgconf wget openssl-dev linux-headers \
     coreutils binutils scanelf posix-libc-utils bash \
-    libxml2-dev icu-dev zlib-dev tzdata \
-    flex bison perl zlib
+    libxml2-dev icu-dev icu-data-full zlib-dev tzdata \
+    flex bison perl ncurses readline
 RUN ln -sf /usr/lib/libz.so.1 /usr/lib/libz.so
 
 COPY scripts/extract_libs.sh /usr/bin/extract_libs.sh
@@ -24,7 +24,24 @@ RUN extract_libs.sh \
     /rootfs/usr/bin/postgres \
     /rootfs/usr/bin/initdb \
     /rootfs/usr/bin/pg_ctl \
-    /rootfs/usr/bin/psql
+    /rootfs/usr/bin/psql \
+    /rootfs/usr/bin/postgres-init \
+    /usr/bin/bash \
+    /usr/bin/cp      
+
+RUN cp -d /usr/lib/libtinfo.so* /rootfs/usr/lib/ \
+    && cp -d /usr/lib/libreadline.so* /rootfs/usr/lib/ \
+    && cp -d /usr/lib/libncursesw.so* /rootfs/usr/lib/ \
+    && cp -d /usr/lib/libncurses.so* /rootfs/usr/lib/ \
+    && cp -d /usr/lib/libnss_files.so* /rootfs/usr/lib/ \
+    && cp -d /usr/lib/libnss_dns.so* /rootfs/usr/lib/ || true
+
+# [FIX] Create nsswitch.conf
+RUN echo "passwd: files" > /rootfs/etc/nsswitch.conf \
+    && echo "group: files" >> /rootfs/etc/nsswitch.conf \
+    && echo "hosts: files dns" >> /rootfs/etc/nsswitch.conf
+
+ARG ENABLE_SUID=true
 
 RUN mkdir -p /rootfs/var/lib/postgresql/data \
     /rootfs/var/run/postgresql \
@@ -33,7 +50,14 @@ RUN mkdir -p /rootfs/var/lib/postgresql/data \
     /rootfs/var/run/postgresql \
     /rootfs/tmp \
     && chmod 1777 /rootfs/tmp \
-    && chmod 0775 /rootfs/var/run/postgresql
+    && chmod 0775 /rootfs/var/run/postgresql \
+    && if [ "$ENABLE_SUID" = "true" ]; then \
+           chmod u+s /rootfs/usr/bin/postgres-init; \
+           echo ">>> SUID Enabled for postgres-init"; \
+       else \
+           echo ">>> SUID Disabled (Strict Mode)"; \
+       fi
+
 
 # ==========================================
 # Final Stage
@@ -44,6 +68,8 @@ LABEL org.opencontainers.image.title="Ghost Core PostgreSQL"
 
 COPY --from=builder /rootfs/etc/passwd /etc/passwd
 COPY --from=builder /rootfs/etc/group /etc/group
+COPY --from=builder /rootfs/etc/ld.so.cache /etc/ld.so.cache
+COPY --from=builder /rootfs/etc/nsswitch.conf /etc/nsswitch.conf
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -51,19 +77,22 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /rootfs/usr/bin/ /usr/bin/
 COPY --from=builder /rootfs/usr/lib/ /usr/lib/
 COPY --from=builder /rootfs/usr/share/postgresql /usr/share/postgresql
+COPY --from=builder /rootfs/usr/share/icu /usr/share/icu
 COPY --from=builder /rootfs/usr/local/etc/postgres /usr/local/etc/postgres
+
+COPY --from=builder /usr/bin/bash /bin/sh
 
 COPY --from=builder --chown=999:999 /rootfs/var/lib/postgresql /var/lib/postgresql
 COPY --from=builder --chown=999:999 /rootfs/var/run/postgresql /var/run/postgresql
 COPY --from=builder --chown=999:999 /rootfs/tmp /tmp
 
-ENV PGDATA /var/lib/postgresql/data
+ENV PGDATA=/var/lib/postgresql/data
 
 VOLUME /var/lib/postgresql/data
 WORKDIR /var/lib/postgresql
 EXPOSE 5432
 
-USER 0
+USER 999
 
 ENTRYPOINT ["/usr/bin/postgres-init"]
 CMD ["postgres"]
@@ -77,6 +106,9 @@ RUN apk add --no-cache bash curl vim tree
 
 COPY --from=builder /rootfs/etc/passwd /etc/passwd
 COPY --from=builder /rootfs/etc/group /etc/group
+COPY --from=builder /rootfs/etc/ld.so.cache /etc/ld.so.cache
+
+COPY --from=builder /rootfs/etc/nsswitch.conf /etc/nsswitch.conf
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -84,19 +116,20 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /rootfs/usr/bin/ /usr/bin/
 COPY --from=builder /rootfs/usr/lib/ /usr/lib/
 COPY --from=builder /rootfs/usr/share/postgresql /usr/share/postgresql
+COPY --from=builder /rootfs/usr/share/icu /usr/share/icu
 COPY --from=builder /rootfs/usr/local/etc/postgres /usr/local/etc/postgres
 
 COPY --from=builder --chown=999:999 /rootfs/var/lib/postgresql /var/lib/postgresql
 COPY --from=builder --chown=999:999 /rootfs/var/run/postgresql /var/run/postgresql
-COPY --from=builder --chown=999:999 /rootfs/tmp /tmpذ
+COPY --from=builder --chown=999:999 /rootfs/tmp /tmp
 
-ENV PGDATA /var/lib/postgresql/data
+ENV PGDATA=/var/lib/postgresql/data
 
 VOLUME /var/lib/postgresql/data
 WORKDIR /var/lib/postgresql
 EXPOSE 5432
 
-USER 0
+USER 999
 
 ENTRYPOINT ["/usr/bin/postgres-init"]
 CMD ["postgres"]

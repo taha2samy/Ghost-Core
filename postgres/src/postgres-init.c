@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <dirent.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 
@@ -13,6 +13,39 @@
 #define PG_DATA "/var/lib/postgresql/data"
 #define PG_BIN "/usr/bin/postgres"
 #define INITDB_BIN "/usr/bin/initdb"
+
+// دالة مساعدة لنسخ الملفات بلغة C مباشرة (بدون الحاجة لـ cp)
+int copy_file(const char *src_path, const char *dst_path, uid_t owner, gid_t group) {
+    FILE *src = fopen(src_path, "rb");
+    if (!src) {
+        perror("Failed to open source file");
+        return -1;
+    }
+
+    FILE *dst = fopen(dst_path, "wb");
+    if (!dst) {
+        perror("Failed to open dest file");
+        fclose(src);
+        return -1;
+    }
+
+    char buffer[4096];
+    size_t bytes;
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+        fwrite(buffer, 1, bytes, dst);
+    }
+
+    fclose(src);
+    fclose(dst);
+
+    // تغيير المالك للملف الجديد
+    if (chown(dst_path, owner, group) != 0) {
+        perror("Failed to chown new file");
+    }
+    
+    printf("=> Copied %s to %s\n", src_path, dst_path);
+    return 0;
+}
 
 int is_initialized() {
     char path[256];
@@ -43,48 +76,76 @@ void run_as_postgres(char *cmd, char **args) {
 }
 
 int main(int argc, char **argv) {
-    if (argc > 1 && argv[1][0] != '-') {
+    // Smart Routing
+    if (argc > 1 && argv[1][0] != '-' && strcmp(argv[1], "postgres") != 0) {
+        setgid(PG_GID);
+        setuid(PG_UID);
         execvp(argv[1], &argv[1]);
         return 1;
     }
 
-    chown(PG_DATA, PG_UID, PG_GID);
-    chown("/var/run/postgresql", PG_UID, PG_GID);
-    chmod("/var/run/postgresql", 0775);
+    // SUID Check & Permissions Fix
+    if (geteuid() == 0) {
+        chown(PG_DATA, PG_UID, PG_GID);
+        chown("/var/run/postgresql", PG_UID, PG_GID);
+        chmod("/var/run/postgresql", 0775);
+    }
 
+    // Initialization Logic
     if (!is_initialized()) {
         char *init_args[] = {
             "initdb",
             "-D", PG_DATA,
             "-E", "UTF8",
             "--no-locale",
+            "-A", "trust",
             NULL
         };
-        run_as_postgres(INITDB_BIN, init_args);
         
-        system("cp /usr/local/etc/postgres/postgresql.conf /var/lib/postgresql/data/postgresql.conf");
-        system("cp /usr/local/etc/postgres/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf");
+        // Run initdb as postgres user
+        if (geteuid() == 0) {
+            run_as_postgres(INITDB_BIN, init_args);
+        } else {
+             pid_t pid = fork();
+             if (pid == 0) {
+                 execv(INITDB_BIN, init_args);
+                 exit(1);
+             }
+             wait(NULL);
+        }
         
-        chown("/var/lib/postgresql/data/postgresql.conf", PG_UID, PG_GID);
-        chown("/var/lib/postgresql/data/pg_hba.conf", PG_UID, PG_GID);
+        copy_file("/usr/local/etc/postgres/postgresql.conf", 
+                  "/var/lib/postgresql/data/postgresql.conf", 
+                  PG_UID, PG_GID);
+                  
+        copy_file("/usr/local/etc/postgres/pg_hba.conf", 
+                  "/var/lib/postgresql/data/pg_hba.conf", 
+                  PG_UID, PG_GID);
     }
 
-    if (setgid(PG_GID) != 0 || setuid(PG_UID) != 0) {
-        perror("Failed to drop privileges");
-        return 1;
+    // Drop Privileges
+    if (geteuid() == 0) {
+        if (setgid(PG_GID) != 0 || setuid(PG_UID) != 0) {
+            perror("Failed to drop privileges");
+            return 1;
+        }
     }
 
-    char *new_argv[argc + 5];
-    new_argv[0] = "postgres";
-    new_argv[1] = "-D";
-    new_argv[2] = PG_DATA;
-    new_argv[3] = "-c";
-    new_argv[4] = "config_file=/var/lib/postgresql/data/postgresql.conf";
+    // Start Server
+    char *new_argv[argc + 10];
+    int idx = 0;
+
+    new_argv[idx++] = "postgres";
+    new_argv[idx++] = "-D";
+    new_argv[idx++] = PG_DATA;
+    new_argv[idx++] = "-c";
+    new_argv[idx++] = "config_file=/var/lib/postgresql/data/postgresql.conf";
     
     for (int i = 1; i < argc; i++) {
-        new_argv[4 + i] = argv[i];
+        if (strcmp(argv[i], "postgres") == 0) continue;
+        new_argv[idx++] = argv[i];
     }
-    new_argv[4 + argc] = NULL;
+    new_argv[idx] = NULL;
 
     execv(PG_BIN, new_argv);
     perror("FATAL: Failed to exec postgres");
