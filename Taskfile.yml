@@ -18,6 +18,11 @@ vars:
 # ==========================================
   REDIS_VER: 8.4.0
   REDIS_SHA: "b947d9015622669b5bee8ec954f658b3278d42dbefae23a92d9b7704bfe143f9"
+# ==========================================
+# postgres Settings
+# ==========================================
+  POSTGRES_VER: 17.7
+  POSTGRES_SHA: "4a9e94204e265b292b0b36534c38543f24f9d96f5413ceac489ef053082ae752"
 
 
 tasks:
@@ -120,3 +125,41 @@ tasks:
       - docker rm -f ghost-redis-dev 2>/dev/null || true
       - echo ">>> Starting Ghost Core Redis Dev..."
       - docker run -it --privileged=true --rm --name ghost-redis-dev -p 6379:6379 {{.REGISTRY}}/redis:{{.REDIS_VER}}-dev
+
+  postgres:prod:
+    desc: Build PostgreSQL Production (Distroless)
+    cmds:
+      - echo ">>> Building Ghost Core [PostgreSQL Prod]..."
+      - >
+        docker build --no-cache --target final
+        --build-arg PG_VERSION={{.POSTGRES_VER}}
+        --build-arg PG_SHA256={{.POSTGRES_SHA}}
+        --build-arg VCS_REF={{.GIT_HASH}}
+        --build-arg BUILD_DATE={{.BUILD_DATE}}
+        -t {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}
+        -f postgres/Dockerfile .
+
+  postgres:dev:
+    desc: Build PostgreSQL Dev (Bash/Tools)
+    cmds:
+      - echo ">>> Building Ghost Core [PostgreSQL Dev]..."
+      - >
+        docker build --no-cache --target dev
+        --build-arg PG_VERSION={{.POSTGRES_VER}}
+        --build-arg PG_SHA256={{.POSTGRES_SHA}}
+        -t {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}-dev
+        -f postgres/Dockerfile .
+
+  postgres:run-dev:
+    desc: Run PostgreSQL Dev container interactively
+    interactive: true
+    cmds:
+      - echo ">>> Stopping old PostgreSQL container..."
+      - docker rm -f ghost-postgres-dev 2>/dev/null || true
+      - echo ">>> Starting Ghost Core PostgreSQL Dev..."
+      - >
+        docker run -it --rm 
+        --name ghost-postgres-dev 
+        -p 5432:5432 
+        -v pg_data:/var/lib/postgresql/data 
+        {{.REGISTRY}}/postgres:{{.POSTGRES_VER}}-dev
