@@ -12,7 +12,6 @@ check_hash() {
     fi
 }
 
-# [FIX] تم إضافة /rootfs/etc هنا
 mkdir -p /rootfs/usr/bin /rootfs/usr/local/etc/redis /rootfs/etc
 
 echo 'root:x:0:0:root:/root:/sbin/nologin' > /rootfs/etc/passwd

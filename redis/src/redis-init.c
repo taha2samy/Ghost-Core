@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,38 +8,49 @@
 #define REDIS_GID 999
 
 int main(int argc, char **argv) {
-    printf("=> [redis-init] Checking vm.overcommit_memory...\n");
-    FILE *f = fopen("/proc/sys/vm/overcommit_memory", "w");
-    if (f) {
-        if (fprintf(f, "1") > 0) {
-            printf("=> [redis-init] SUCCESS: vm.overcommit_memory set to 1.\n");
+    uid_t current_uid = getuid();
+
+    if (current_uid == 0) {
+        printf("=> [redis-init] Running as root. Attempting system tuning...\n");
+
+        FILE *f = fopen("/proc/sys/vm/overcommit_memory", "w");
+        if (f) {
+            fprintf(f, "1");
+            fclose(f);
+            printf("=> [redis-init] vm.overcommit_memory set to 1\n");
         } else {
-            fprintf(stderr, "=> [redis-init] WARNING: Failed to write to /proc/sys/vm/overcommit_memory.\n");
+            printf("=> [redis-init] Warning: Failed to write overcommit_memory (Read-only fs?)\n");
         }
-        fclose(f);
+
+        printf("=> [redis-init] Dropping privileges to redis (%d:%d)...\n", REDIS_UID, REDIS_GID);
+        if (setgid(REDIS_GID) != 0) {
+            perror("Failed setgid");
+            return 1;
+        }
+        if (setuid(REDIS_UID) != 0) {
+            perror("Failed setuid");
+            return 1;
+        }
     } else {
-        fprintf(stderr, "=> [redis-init] WARNING: Cannot open /proc/sys/vm/overcommit_memory (Permission Denied).\n");
+        printf("=> [redis-init] Running as non-root (UID: %d). Skipping system tuning.\n", current_uid);
     }
 
-    // 2. Drop Privileges
-    printf("=> [redis-init] Dropping privileges to user redis (%d:%d)...\n", REDIS_UID, REDIS_GID);
-    if (setgid(REDIS_GID) != 0) {
-        perror("=> [redis-init] FATAL: Failed to set GID");
-        return 1;
-    }
-    if (setuid(REDIS_UID) != 0) {
-        perror("=> [redis-init] FATAL: Failed to set UID");
-        return 1;
-    }
-
-    // 3. Launch Redis Server directly
-    printf("=> [redis-init] Starting redis-server as unprivileged user...\n");
-    
     char *redis_bin = "/usr/bin/redis-server";
-    argv[0] = "redis-server";
+    char *config_file = "/usr/local/etc/redis/redis.conf";
 
-    execv(redis_bin, argv);
+    if (argc > 1) {
+        config_file = argv[1];
+    }
 
-    perror("=> [redis-init] FATAL: Failed to exec redis-server");
+    char *new_argv[] = {
+        "redis-server",
+        config_file,
+        NULL
+    };
+
+    printf("=> [redis-init] Starting %s with config %s...\n", redis_bin, config_file);
+    execv(redis_bin, new_argv);
+
+    perror("=> [redis-init] Failed exec redis-server");
     return 1;
 }
