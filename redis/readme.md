@@ -85,7 +85,7 @@ A critical vulnerability in many wrappers is passing "dirty" arguments from the 
     ```c
     char *new_argv[] = {
         "redis-server",      // Force argv[0] to be correct
-        "/etc/redis/redis.conf", // Enforce config path
+        "/usr/local/etc/redis/redis.conf", // Enforce config path
         NULL
     };
     ```
@@ -143,14 +143,14 @@ Since this image is Distroless, you cannot just "exec in and edit files." You mu
     docker run -v my-redis-data:/data ghost-core/redis:prod
     ```
 
-### 2. Custom Configuration (`/etc/redis/redis.conf`)
-*   **Path:** `/etc/redis/redis.conf`
+### 2. Custom Configuration (`/usr/local/etc/redis/redis.conf`)
+*   **Path:** `/usr/local/etc/redis/redis.conf`
 *   **Purpose:** The main configuration file.
 *   **How to Override:** Mount your own config file here.
 *   **Warning:** Ensure your custom config has `logfile ""` (empty string) to send logs to stdout, otherwise `docker logs` will be empty.
 *   **Docker Run:**
     ```bash
-    docker run -v $(pwd)/my-redis.conf:/etc/redis/redis.conf ghost-core/redis:prod
+    docker run -v $(pwd)/my-redis.conf:/usr/local/etc/redis/redis.conf ghost-core/redis:prod
     ```
 
 ![alt text](<images/mount points.png>)
@@ -165,7 +165,7 @@ volumeMounts:
   - name: redis-data
     mountPath: /data
   - name: redis-config
-    mountPath: /etc/redis/redis.conf
+    mountPath: /usr/local/etc/redis/redis.conf
     subPath: redis.conf
 ```
 
@@ -184,7 +184,7 @@ docker run -d \
   --cap-add SYS_ADMIN \
   --cap-add SYS_RESOURCE \
   -p 6379:6379 \
-  ghost-core/redis:prod
+  ghost-core/redis:8.4.0-docker
 ```
 
 **Why `--cap-add`?**
@@ -231,7 +231,7 @@ spec:
       # -----------------------------------------------------------
       containers:
       - name: redis
-        image: ghost-core/redis:prod
+        image: ghost-core/redis:8.4.0-k8s
         ports:
         - containerPort: 6379
         securityContext:
@@ -241,6 +241,3 @@ spec:
           capabilities:
             drop: ["ALL"]       # Drop all Linux capabilities
 ```
-
-**Why this works:**
-When `ghost-core/redis:prod` starts as User 999, our `redis-init` wrapper detects it is **not Root**, skips the kernel tuning step (assuming the Init Container did it), and starts Redis immediately.
