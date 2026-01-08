@@ -93,32 +93,52 @@ tasks:
       - echo ">>> You are now entering the matrix. Try 'ls -l /usr/lib/nginx/modules'"
       - docker run -it --rm --name ghost-nginx-dev -p 8080:8080 {{.REGISTRY}}/nginx:{{.NGINX_VER}}-dev bash
 
-  redis:prod:
-    desc: Build Redis Production (Distroless)
+# ==========================================
+  # REDIS TASKS
+  # ==========================================
+
+  redis:build-docker:
+    desc: Build Redis for Docker (Auto-tuning enabled)
     cmds:
-      - echo ">>> Building Ghost Core [Redis Prod]..."
+      - echo ">>> Building Ghost Core [Redis Docker]..."
       - >
-        docker build --no-cache --target final
+        docker build --no-cache --target docker
         --build-arg REDIS_VERSION={{.REDIS_VER}}
         --build-arg REDIS_SHA256={{.REDIS_SHA}}
         --build-arg VCS_REF={{.GIT_HASH}}
         --build-arg BUILD_DATE={{.BUILD_DATE}}
-        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}
+        -t {{.REGISTRY}}/redis:docker
+        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}-docker
+        -f redis/Dockerfile .
+
+  redis:build-k8s:
+    desc: Build Redis for Kubernetes (Strict Non-Root)
+    cmds:
+      - echo ">>> Building Ghost Core [Redis K8s]..."
+      - >
+        docker build --no-cache --target k8s
+        --build-arg REDIS_VERSION={{.REDIS_VER}}
+        --build-arg REDIS_SHA256={{.REDIS_SHA}}
+        --build-arg VCS_REF={{.GIT_HASH}}
+        --build-arg BUILD_DATE={{.BUILD_DATE}}
+        -t {{.REGISTRY}}/redis:k8s
+        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}-k8s
         -f redis/Dockerfile .
 
   redis:dev:
-    desc: Build Redis Dev (Bash/Tools)
+    desc: Build Redis Dev (With Tools)
     cmds:
       - echo ">>> Building Ghost Core [Redis Dev]..."
       - >
         docker build --no-cache --target dev
         --build-arg REDIS_VERSION={{.REDIS_VER}}
         --build-arg REDIS_SHA256={{.REDIS_SHA}}
+        -t {{.REGISTRY}}/redis:dev
         -t {{.REGISTRY}}/redis:{{.REDIS_VER}}-dev
         -f redis/Dockerfile .
 
   redis:run-dev:
-    desc: Run Redis Dev container interactively
+    desc: Run Redis Dev interactively
     interactive: true
     cmds:
       - echo ">>> Stopping old Redis container..."

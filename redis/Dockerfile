@@ -33,17 +33,15 @@ RUN mkdir -p /rootfs/data /rootfs/var/run /rootfs/tmp \
 # ==========================================
 # Final Stage
 # ==========================================
-FROM cgr.dev/chainguard/static:latest AS final
+FROM cgr.dev/chainguard/static:latest AS docker
 
 ARG REDIS_VERSION
 ARG VCS_REF
 ARG BUILD_DATE
 
-LABEL org.opencontainers.image.title="Ghost Core Redis"
-LABEL org.opencontainers.image.description="Secure Redis ${REDIS_VERSION}"
+LABEL org.opencontainers.image.title="Ghost Core Redis (Docker)"
+LABEL org.opencontainers.image.description="Secure Redis ${REDIS_VERSION} for Docker"
 LABEL org.opencontainers.image.version="${REDIS_VERSION}"
-LABEL org.opencontainers.image.revision="${VCS_REF}"
-LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.vendor="Taha2Samy"
 
 COPY --from=builder /rootfs/etc/passwd /etc/passwd
@@ -53,7 +51,9 @@ COPY --from=builder /rootfs/etc/ld.so.cache /etc/ld.so.cache
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY --from=builder /rootfs/usr/bin/ /usr/bin/
+COPY --from=builder /rootfs/usr/bin/redis-server /usr/bin/redis-server
+COPY --from=builder /rootfs/usr/bin/redis-init /usr/bin/redis-init
+
 COPY --from=builder --chown=999:999 /rootfs/usr/local/etc/redis /usr/local/etc/redis
 COPY --from=builder /rootfs/usr/lib/ /usr/lib/
 
@@ -71,8 +71,46 @@ ENTRYPOINT ["/usr/bin/redis-init"]
 CMD ["/usr/local/etc/redis/redis.conf"]
 
 # ==========================================
-# Dev Stage
+# Target: Kubernetes (Minimal - No Init Wrapper)
 # ==========================================
+FROM cgr.dev/chainguard/static:latest AS k8s
+
+ARG REDIS_VERSION
+ARG VCS_REF
+ARG BUILD_DATE
+
+LABEL org.opencontainers.image.title="Ghost Core Redis (K8s)"
+LABEL org.opencontainers.image.description="Secure Redis ${REDIS_VERSION} for K8s"
+LABEL org.opencontainers.image.version="${REDIS_VERSION}"
+LABEL org.opencontainers.image.vendor="Taha2Samy"
+
+COPY --from=builder /rootfs/etc/passwd /etc/passwd
+COPY --from=builder /rootfs/etc/group /etc/group
+COPY --from=builder /rootfs/etc/ld.so.cache /etc/ld.so.cache
+
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+COPY --from=builder /rootfs/usr/bin/redis-server /usr/bin/redis-server
+
+COPY --from=builder --chown=999:999 /rootfs/usr/local/etc/redis /usr/local/etc/redis
+
+COPY --from=builder /rootfs/usr/lib/ /usr/lib/
+
+COPY --from=builder --chown=999:999 /rootfs/data /data
+COPY --from=builder --chown=999:999 /rootfs/var/run /var/run
+COPY --from=builder --chown=999:999 /rootfs/tmp /tmp
+
+VOLUME /data
+WORKDIR /data
+EXPOSE 6379
+
+USER 999
+
+ENTRYPOINT ["/usr/bin/redis-server"]
+CMD ["/usr/local/etc/redis/redis.conf"]
+
+
 FROM cgr.dev/chainguard/wolfi-base:latest AS dev
 
 RUN apk add --no-cache bash curl vim tree bind-tools

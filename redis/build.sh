@@ -12,7 +12,6 @@ check_hash() {
     fi
 }
 
-# [FIX] تم إضافة /rootfs/etc هنا
 mkdir -p /rootfs/usr/bin /rootfs/usr/local/etc/redis /rootfs/etc
 
 echo 'root:x:0:0:root:/root:/sbin/nologin' > /rootfs/etc/passwd
@@ -35,7 +34,6 @@ cp /usr/src/redis/src/redis-check-aof /rootfs/usr/bin/
 cp /usr/src/redis/src/redis-check-rdb /rootfs/usr/bin/
 cp /usr/src/redis/src/redis-sentinel /rootfs/usr/bin/
 strip /rootfs/usr/bin/*
-
 cp /tmp/redis.conf /rootfs/usr/local/etc/redis/redis.conf
 
 gcc -O2 -static -o /rootfs/usr/bin/redis-init /usr/src/redis-init.c
