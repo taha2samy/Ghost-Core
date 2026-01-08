@@ -92,8 +92,7 @@ A critical vulnerability in many wrappers is passing "dirty" arguments from the 
 *   **Process Replacement:** We use `execv()`. This replaces the `redis-init` process with `redis-server` in memory.
     *   **Why?** This ensures Redis becomes the new **PID 1**, allowing it to receive and handle system signals (like `SIGTERM` for graceful shutdowns) correctly.
 
-> **[PLACEHOLDER: Diagram of redis-init Logic Flow]**
-> *Visual Description: A decision tree showing: Start -> Am I Root? -> (Yes: Fix Memory -> Drop User) / (No: Skip) -> Construct Args -> Exec Redis.*
+
 
 ---
 
@@ -153,7 +152,27 @@ Since this image is Distroless, you cannot just "exec in and edit files." You mu
     docker run -v $(pwd)/my-redis.conf:/usr/local/etc/redis/redis.conf ghost-core/redis:prod
     ```
 
-![alt text](<images/mount points.png>)
+```mermaid
+flowchart LR
+ subgraph Host["Host / Kubernetes Node"]
+        HostConfig["📄 my-redis.conf (Custom Config)"]
+        HostData[("💾 Redis Data Volume")]
+  end
+ subgraph Container["📦 Ghost Core Redis Container"]
+        ConfigPath["/usr/local/etc/redis/redis.conf"]
+        DataPath["/data"]
+        Process(("⚙️ redis-server"))
+  end
+    HostConfig -. Bind Mount .-> ConfigPath
+    HostData == Persistent Volume === DataPath
+    ConfigPath --> Process
+    Process --> DataPath
+
+    style HostConfig fill:#eee,stroke:#333
+    style HostData fill:#f96,stroke:#333
+    style Container fill:#eef,stroke:#333,stroke-dasharray: 5 5
+```
+
 
 ---
 
