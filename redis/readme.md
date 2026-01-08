@@ -168,9 +168,6 @@ flowchart LR
     ConfigPath --> Process
     Process --> DataPath
 
-    style HostConfig fill:#eee,stroke:#333
-    style HostData fill:#f96,stroke:#333
-    style Container fill:#eef,stroke:#333,stroke-dasharray: 5 5
 ```
 
 
