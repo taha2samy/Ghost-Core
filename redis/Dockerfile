@@ -65,7 +65,7 @@ VOLUME /data
 WORKDIR /data
 EXPOSE 6379
 
-USER 0
+USER 999
 
 ENTRYPOINT ["/usr/bin/redis-init"]
 CMD ["/usr/local/etc/redis/redis.conf"]
@@ -96,7 +96,7 @@ VOLUME /data
 WORKDIR /data
 EXPOSE 6379
 
-USER 0
+USER 999
 
 ENTRYPOINT ["/usr/bin/redis-init"]
 CMD ["/usr/local/etc/redis/redis.conf"]
