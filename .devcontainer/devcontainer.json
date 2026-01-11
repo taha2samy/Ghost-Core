@@ -1,7 +1,7 @@
 {
   "name": "Ghost-Core Dev Container",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "dockerfile"
   },
   "workspaceFolder": "/workspaces/app",
   "customizations": {
