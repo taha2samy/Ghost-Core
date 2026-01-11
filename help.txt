@@ -1,0 +1,7 @@
+DEPENDENCY TRACK RECIPES:
+   dtrack-start            Start Dependency-Track stack.
+   dtrack-stop             Stop Dependency-Track stack.
+   dtrack-restart          Restart Dependency-Track stack.
+
+note:
+   Note: When running on Codespaces, make sure ports 8080 and 8081 are set to Public.
