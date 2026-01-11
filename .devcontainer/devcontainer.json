@@ -1,0 +1,25 @@
+{
+  "name": "Ghost-Core Dev Container",
+  "build": {
+    "dockerfile": "dockerfile"
+  },
+  "workspaceFolder": "/workspaces/app",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "skellock.just",
+        "task.vscode-task",
+        "donjayamanne.githistory"
+
+
+      ]
+    }
+  },
+  "postCreateCommand": "yq --version && just --version",
+  "remoteUser": "root"
+}

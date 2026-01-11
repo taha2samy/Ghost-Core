@@ -1,0 +1,29 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        software-properties-common \
+        ca-certificates && \
+    add-apt-repository universe
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        wget \
+        git \
+        gnupg \
+        lsb-release \
+        just && \
+    rm -rf /var/lib/apt/lists/* 
+
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/task/task/setup.deb.sh' | /bin/bash && \
+    apt-get update && apt-get install -y task && \
+    rm -rf /var/lib/apt/lists/*
+RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+    -O /usr/local/bin/yq && \
+    chmod +x /usr/local/bin/yq
+
+RUN yq --version && just --version
+
+WORKDIR /workspaces/app
