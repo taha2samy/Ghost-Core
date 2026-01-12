@@ -24,7 +24,8 @@
         "eamodio.gitlens",
         "skellock.just",
         "task.vscode-task",
-        "donjayamanne.githistory"
+        "donjayamanne.githistory",
+        "vscode-icons-team.vscode-icons"
       ]
     }
   },
