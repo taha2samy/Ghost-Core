@@ -4,18 +4,19 @@
     "dockerfile": "dockerfile"
   },
   "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ],
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
   "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {
-            "version": "latest",
-            "moby": false
-        }
-    },
-  "workspaceFolder": "/workspaces/app",
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": false
+    }
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {
       "settings": {
+        "locale": "en",
         "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
@@ -23,10 +24,10 @@
         "eamodio.gitlens",
         "skellock.just",
         "task.vscode-task",
-        "donjayamanne.githistory"
+        "donjayamanne.githistory",
+        "vscode-icons-team.vscode-icons"
       ]
     }
   },
-  "postCreateCommand": "yq --version && just --version",
-  "remoteUser": "root"
+  "postCreateCommand": "echo 'i ready'"
 }

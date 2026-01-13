@@ -20,7 +20,3 @@ RUN apt-get update && \
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && \
     chmod +x /usr/local/bin/yq && \
     rm -rf /var/lib/apt/lists/*
-
-RUN yq --version && just --version
-
-WORKDIR /workspaces/Ghost-Core/
