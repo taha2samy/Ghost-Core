@@ -1,0 +1,72 @@
+version: '3'
+
+tasks:
+  # =========================
+  # DEV
+  # =========================
+  dev:
+    desc: Build Redis Dev
+    cmds:
+      - >
+        docker build --no-cache --target dev
+        --build-arg REDIS_VERSION={{.REDIS_VER}}
+        --build-arg REDIS_SHA256={{.REDIS_SHA}}
+        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}-dev
+        -f redis/Dockerfile .
+
+  run-dev:
+    desc: Run Redis Dev interactively
+    interactive: true
+    cmds:
+      - docker rm -f ghost-redis-dev 2>/dev/null || true
+      - >
+        docker run -it --rm --privileged
+        --name ghost-redis-dev
+        -p 6379:6379
+        {{.REGISTRY}}/redis:{{.REDIS_VER}}-dev
+
+  # =========================
+  # DOCKER
+  # =========================
+  docker:
+    desc: Build Redis Docker image
+    cmds:
+      - echo ">>> Building Redis (Docker target)..."
+      - >
+        docker build --no-cache
+        --target docker
+        --build-arg REDIS_VERSION={{.REDIS_VER}}
+        --build-arg REDIS_SHA256={{.REDIS_SHA}}
+        --build-arg VCS_REF={{.GIT_HASH}}
+        --build-arg BUILD_DATE={{.BUILD_DATE}}
+        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}
+        -t {{.REGISTRY}}/redis:latest
+        -f redis/Dockerfile .
+
+  # =========================
+  # K8S
+  # =========================
+  k8s:
+    desc: Build Redis Kubernetes image (minimal)
+    cmds:
+      - echo ">>> Building Redis (K8s target)..."
+      - >
+        docker build --no-cache
+        --target k8s
+        --build-arg REDIS_VERSION={{.REDIS_VER}}
+        --build-arg REDIS_SHA256={{.REDIS_SHA}}
+        --build-arg VCS_REF={{.GIT_HASH}}
+        --build-arg BUILD_DATE={{.BUILD_DATE}}
+        -t {{.REGISTRY}}/redis:{{.REDIS_VER}}-k8s
+        -t {{.REGISTRY}}/redis:k8s
+        -f redis/Dockerfile .
+
+  # =========================
+  # ALL
+  # =========================
+  build-all:
+    desc: Build Redis (Dev + Docker + K8s)
+    deps:
+      - dev
+      - docker
+      - k8s

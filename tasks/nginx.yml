@@ -1,0 +1,77 @@
+version: '3'
+
+tasks:
+  build-all:
+    desc: Build ALL variants (Light, Full, Extras) + Dev versions
+    deps:
+      - light
+      - full
+      - extras
+      - light-dev
+      - full-dev
+      - extras-dev
+
+  light:
+    desc: Build Nginx Light (Distroless)
+    cmds:
+      - echo ">>> Building [Nginx Light]"
+      - >
+        docker build --no-cache --target final
+        --build-arg NGINX_VERSION={{.NGINX_VER}}
+        --build-arg NGINX_SHA256={{.NGINX_SHA}}
+        --build-arg BUILD_MODE=core
+        -t {{.REGISTRY}}/nginx:{{.NGINX_VER}}-core
+        -f nginx/Dockerfile .
+
+  light-dev:
+    desc: Build Nginx Light (Dev)
+    cmds:
+      - >
+        docker build --no-cache --target dev
+        --build-arg NGINX_VERSION={{.NGINX_VER}}
+        --build-arg NGINX_SHA256={{.NGINX_SHA}}
+        --build-arg BUILD_MODE=core
+        -t {{.REGISTRY}}/nginx:{{.NGINX_VER}}-core-dev
+        -f nginx/Dockerfile .
+
+  full:
+    desc: Build Nginx Full
+    cmds:
+      - >
+        docker build --no-cache --target final
+        --build-arg BUILD_MODE=full
+        -t {{.REGISTRY}}/nginx:full
+        -f nginx/Dockerfile .
+
+  full-dev:
+    desc: Build Nginx Full Dev
+    cmds:
+      - >
+        docker build --no-cache --target dev
+        --build-arg BUILD_MODE=full
+        -t {{.REGISTRY}}/nginx:full-dev
+        -f nginx/Dockerfile .
+
+  extras:
+    desc: Build Nginx Extras
+    cmds:
+      - >
+        docker build --no-cache --target final
+        --build-arg BUILD_MODE=extras
+        -t {{.REGISTRY}}/nginx:extras
+        -f nginx/Dockerfile .
+
+  extras-dev:
+    desc: Build Nginx Extras Dev
+    cmds:
+      - >
+        docker build --no-cache --target dev
+        --build-arg BUILD_MODE=extras
+        -t {{.REGISTRY}}/nginx:extras-dev
+        -f nginx/Dockerfile .
+
+  run-dev:
+    interactive: true
+    cmds:
+      - docker rm -f ghost-nginx-dev 2>/dev/null || true
+      - docker run -it --rm --name ghost-nginx-dev -p 8080:8080 {{.REGISTRY}}/nginx:full-dev bash

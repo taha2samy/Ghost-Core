@@ -1,0 +1,20 @@
+version: '3'
+
+vars:
+  REGISTRY: ghost-core
+
+  GIT_HASH:
+    sh: git rev-parse --short HEAD || echo "dev"
+
+  BUILD_DATE:
+    sh: date -u +'%Y-%m-%dT%H:%M:%SZ'
+
+  # ================= NGINX =================
+  NGINX_VER: 1.29.4
+  NGINX_SHA: "5a7d37eee505866fbab5810fa9f78247d6d5d9157a595c4e7a72043141ddab25"
+  NJS_VER: 0.9.4
+  NJS_SHA: "7b3a9f14b0f09311d9031c2a252cb0e23c06baac2e586a7d12c75aa6cba4ca0e"
+
+  # ================= REDIS =================
+  REDIS_VER: 8.4.0
+  REDIS_SHA: "b947d9015622669b5bee8ec954f658b3278d42dbefae23a92d9b7704bfe143f9"
